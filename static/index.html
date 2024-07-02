@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kayode_bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #ff4081, #2196f3);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 20px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        #chatbox {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            overflow-y: scroll;
+            background: #1c1c1c;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+        #userInput, #sendButton {
+            display: none;
+        }
+        #speakButton {
+            padding: 15px;
+            border: none;
+            border-radius: 50%;
+            background: #ff4081;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s ease, background 0.3s ease;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+        }
+        #speakButton svg {
+            width: 24px;
+            height: 24px;
+        }
+        #speakButton:hover {
+            transform: scale(1.2);
+            background: #e91e63;
+        }
+        .equalizer {
+            display: none;
+            width: 30px;
+            height: 24px;
+            margin: 0 auto;
+        }
+        .bar {
+            width: 5px;
+            height: 100%;
+            display: inline-block;
+            background: #ff4081;
+            animation: equalize 0.5s infinite;
+        }
+        .bar:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        .bar:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+        .bar:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+        .bar:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+        @keyframes equalize {
+            0%, 100% {
+                transform: scaleY(1);
+            }
+            50% {
+                transform: scaleY(0.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>kayode_bot</h1>
+        <div id="chatbox"></div>
+        <input type="text" id="userInput" placeholder="Type a message...">
+        <button id="sendButton">Send</button>
+        <button id="speakButton">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zm0 14a5.002 5.002 0 01-4.9-4H6a7 7 0 007 7v3h-1a1 1 0 100 2h4a1 1 0 100-2h-1v-3a7 7 0 007-7h-1.1a5.002 5.002 0 01-4.9 4zm5-4V4a5 5 0 10-10 0v7a5 5 0 0010 0z"/>
+            </svg>
+        </button>
+        <div class="equalizer" id="equalizer">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        <p id="faceRecognitionStatus">Recognizing face...</p>
+    </div>
+    <script>
+        // Get the chatbox element where messages will be displayed
+        const chatbox = document.getElementById('chatbox');
+        // Get the userInput element (not actively used in this implementation)
+        const userInput = document.getElementById('userInput');
+        // Get the speakButton element which the user clicks to start speech recognition
+        const speakButton = document.getElementById('speakButton');
+        // Get the equalizer element which indicates that the app is listening
+        const equalizer = document.getElementById('equalizer');
+        // Get the faceRecognitionStatus element which displays face recognition status
+        const faceRecognitionStatus = document.getElementById('faceRecognitionStatus');
+
+        // Function to append a message to the chatbox
+        function appendMessage(sender, message) {
+            // Add a new message to the chatbox with the sender's name and message
+            chatbox.innerHTML += `<p><strong>${sender}:</strong> ${message}</p>`;
+            // Scroll to the bottom of the chatbox to show the latest message
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Function to send a message to the server and handle the response
+        function sendMessage(message) {
+            // Append my message to the chatbox
+            appendMessage('You', message);
+            // Send the message to the server via a POST request
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json' // Set the content type to JSON
+                },
+                // Include the message in the request body as JSON
+                body: JSON.stringify({ message: message })
+            })
+            .then(response => response.json()) // Parse the server's response as JSON
+            .then(data => {
+                // Append the bot response to the chatbox
+                appendMessage('Bot', data.response);
+                // Read its response aloud using the speak function
+                speak(data.response);
+            });
+        }
+
+        // Function to convert text to speech
+        function speak(text) {
+            // Create a new SpeechSynthesisUtterance with the given text
+            const speech = new SpeechSynthesisUtterance(text);
+            // Use the speechSynthesis API to speak the text
+            window.speechSynthesis.speak(speech);
+        }
+
+        // Function to check face recognition status
+        function checkFaceRecognition() {
+            fetch('/recognize_face', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.recognized) {
+                    faceRecognitionStatus.textContent = "Face recognized. You may start chatting.";
+                    faceRecognitionStatus.style.color = "green";
+                    // Enable the speakButton
+                    speakButton.disabled = false;
+                } else {
+                    faceRecognitionStatus.textContent = "Face not recognized. Access denied.";
+                    faceRecognitionStatus.style.color = "red";
+                    // Disable the speakButton
+                    speakButton.disabled = true;
+                }
+            });
+        }
+
+        // Add a click event listener to the speakButton to start speech recognition
+        speakButton.addEventListener('click', function() {
+            // Create a new SpeechRecognition object (or webkitSpeechRecognition in case of certain compatibility issues)
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            // Set the language for recognition
+            recognition.lang = 'en-US';
+            // Do not return interim results
+            recognition.interimResults = false;
+            // Provide a single best alternative
+            recognition.maxAlternatives = 1;
+
+            // When speech recognition starts
+            recognition.onstart = function() {
+                // Hide the speakButton and show the equalizer
+                speakButton.style.display = 'none';
+                equalizer.style.display = 'block';
+            };
+
+            // When speech recognition ends
+            recognition.onend = function() {
+                // Hide the equalizer and show the speakButton
+                equalizer.style.display = 'none';
+                speakButton.style.display = 'flex';
+            };
+
+            // When a result is received from speech recognition
+            recognition.onresult = function(event) {
+                // Get the recognized speech text
+                const speechResult = event.results[0][0].transcript;
+                // Set the recognized speech as the value of userInput
+                userInput.value = speechResult;
+                // Send the recognized speech text to the server
+                sendMessage(speechResult);
+            };
+
+            // Start speech recognition
+            recognition.start();
+        });
+
+        // Check face recognition status when the page loads
+        window.onload = function() {
+            checkFaceRecognition();
+        };
+    </script>
+</body>
+</html>
